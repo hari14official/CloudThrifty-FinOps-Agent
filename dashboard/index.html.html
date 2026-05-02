@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cloud-Thrifty — FinOps Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #f7f6f2;
+    --surface:     #ffffff;
+    --surface-2:   #f1efe8;
+    --border:      rgba(60,60,58,.12);
+    --border-md:   rgba(60,60,58,.22);
+    --text-1:      #1a1a18;
+    --text-2:      #5f5e5a;
+    --text-3:      #888780;
+    --teal:        #0f6e56;
+    --teal-light:  #e1f5ee;
+    --teal-mid:    #1d9e75;
+    --red:         #a32d2d;
+    --red-light:   #fcebeb;
+    --amber:       #854f0b;
+    --amber-light: #faeeda;
+    --blue:        #185fa5;
+    --blue-light:  #e6f1fb;
+    --purple:      #534ab7;
+    --purple-light:#eeedfe;
+    --radius-sm:   6px;
+    --radius-md:   10px;
+    --radius-lg:   14px;
+    --mono:        'IBM Plex Mono', 'Courier New', monospace;
+    --sans:        'Inter', system-ui, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:          #18181a;
+      --surface:     #222224;
+      --surface-2:   #2a2a2c;
+      --border:      rgba(255,255,255,.09);
+      --border-md:   rgba(255,255,255,.18);
+      --text-1:      #f0ede8;
+      --text-2:      #a09e9a;
+      --text-3:      #6a6866;
+      --teal:        #5dcaa5;
+      --teal-light:  #085041;
+      --teal-mid:    #1d9e75;
+      --red:         #f09595;
+      --red-light:   #501313;
+      --amber:       #ef9f27;
+      --amber-light: #412402;
+      --blue:        #85b7eb;
+      --blue-light:  #042c53;
+      --purple:      #afa9ec;
+      --purple-light:#26215c;
+    }
+  }
+
+  html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text-1);
+    min-height: 100vh;
+    padding: 1.5rem;
+  }
+
+  /* ── Layout ───────────────────────────────────────────────────────────── */
+  .d { max-width: 1100px; margin: 0 auto; }
+
+  .two-col   { display: grid; grid-template-columns: 1fr 1fr;       gap: 12px; margin-bottom: 12px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr;   gap: 12px; margin-bottom: 12px; }
+  .four-col  { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 14px; }
+
+  /* ── Typography helpers ───────────────────────────────────────────────── */
+  .mono { font-family: var(--mono); }
+  .label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    font-family: var(--mono);
+    color: var(--text-3);
+  }
+
+  /* ── Panels ───────────────────────────────────────────────────────────── */
+  .panel {
+    background: var(--surface);
+    border: .5px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .panel-full { margin-bottom: 12px; }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .65rem 1rem;
+    border-bottom: .5px solid var(--border);
+    gap: 12px;
+  }
+  .panel-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    font-family: var(--mono);
+    color: var(--text-2);
+  }
+
+  /* ── Top bar ──────────────────────────────────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand-icon {
+    width: 36px; height: 36px;
+    background: var(--teal-mid);
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .brand-name { font-size: 16px; font-weight: 600; color: var(--text-1); letter-spacing: -.02em; }
+  .brand-sub  { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-top: 1px; }
+
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+  .pulse-wrap { display: flex; align-items: center; gap: 6px; }
+  .pulse {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--teal-mid);
+    animation: blink 2.2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .scan-label { font-size: 11px; color: var(--text-2); font-family: var(--mono); }
+
+  .chip {
+    font-size: 10px; font-weight: 600;
+    padding: 3px 10px; border-radius: 20px;
+    font-family: var(--mono);
+  }
+  .chip-amber { background: var(--amber-light); color: var(--amber); }
+  .chip-teal  { background: var(--teal-light);  color: var(--teal);  }
+  .chip-red   { background: var(--red-light);   color: var(--red);   }
+  .chip-blue  { background: var(--blue-light);  color: var(--blue);  }
+  .chip-purple{ background: var(--purple-light);color: var(--purple);}
+
+  /* ── KPI cards ────────────────────────────────────────────────────────── */
+  .kpi {
+    background: var(--surface);
+    border: .5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1rem .85rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-label  { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-family: var(--mono); color: var(--text-3); margin-bottom: .45rem; }
+  .kpi-value  { font-size: 26px; font-weight: 600; line-height: 1; letter-spacing: -.02em; color: var(--text-1); }
+  .kpi-value.teal  { color: var(--teal-mid); }
+  .kpi-value.red   { color: var(--red); }
+  .kpi-value.amber { color: var(--amber); }
+  .kpi-footer { display: flex; align-items: center; gap: 5px; margin-top: .5rem; }
+  .kpi-delta  { font-size: 11px; font-family: var(--mono); }
+  .kpi-delta.up   { color: var(--red); }
+  .kpi-delta.down { color: var(--teal-mid); }
+  .kpi-delta-sub  { font-size: 11px; color: var(--text-3); }
+  .kpi-spark  { position: absolute; bottom: 0; right: 0; opacity: .12; pointer-events: none; }
+
+  /* ── Chart legend ─────────────────────────────────────────────────────── */
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; }
+  .leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-2); font-family: var(--mono); }
+  .leg-sq { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── Waste table ──────────────────────────────────────────────────────── */
+  .waste-head, .waste-row {
+    display: grid;
+    grid-template-columns: 1.8fr 1fr .8fr .55fr .75fr .65fr;
+    align-items: center;
+    padding: .55rem 1rem;
+    gap: 4px;
+  }
+  .waste-head {
+    background: var(--surface-2);
+    border-bottom: .5px solid var(--border);
+  }
+  .waste-head span { font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; font-family: var(--mono); color: var(--text-3); }
+  .waste-row { border-bottom: .5px solid var(--border); font-size: 12px; transition: background .1s; }
+  .waste-row:last-child { border-bottom: none; }
+  .waste-row:hover { background: var(--surface-2); }
+  .rid { font-family: var(--mono); font-size: 11px; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rtype { display: inline-flex; align-items: center; gap: 5px; }
+  .rtype-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Sev bar ──────────────────────────────────────────────────────────── */
+  .sev-wrap { display: flex; align-items: center; gap: 5px; }
+  .sev-track { flex: 1; height: 4px; border-radius: 2px; background: var(--surface-2); }
+  .sev-fill  { height: 4px; border-radius: 2px; }
+  .sev-num   { font-size: 10px; font-family: var(--mono); min-width: 18px; }
+
+  /* ── Scheduler ────────────────────────────────────────────────────────── */
+  .sched-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: .65rem 1rem;
+    border-bottom: .5px solid var(--border);
+  }
+  .sched-item:last-child { border-bottom: none; }
+  .sched-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .sched-env { font-size: 13px; font-weight: 600; color: var(--text-1); min-width: 60px; }
+  .sched-bar-wrap { flex: 1; }
+  .sched-meta-label { font-size: 10px; color: var(--text-3); font-family: var(--mono); margin-bottom: 3px; }
+  .sched-track { height: 5px; border-radius: 3px; background: var(--surface-2); position: relative; }
+  .sched-fill  { height: 5px; border-radius: 3px; position: absolute; top: 0; left: 0; }
+  .sched-save  { font-size: 11px; font-family: var(--mono); color: var(--text-2); min-width: 68px; text-align: right; }
+
+  .sched-footer {
+    padding: .55rem 1rem;
+    border-top: .5px solid var(--border);
+    font-size: 10px;
+    color: var(--text-3);
+    font-family: var(--mono);
+  }
+
+  /* ── Region list ──────────────────────────────────────────────────────── */
+  .region-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: .6rem 1rem;
+    border-bottom: .5px solid var(--border);
+  }
+  .region-item:last-child { border-bottom: none; }
+  .rname { font-size: 11px; font-family: var(--mono); color: var(--text-1); min-width: 96px; }
+  .rbar-wrap { flex: 1; }
+  .rbar { height: 5px; border-radius: 3px; background: var(--surface-2); }
+  .rbar-fill { height: 5px; border-radius: 3px; background: var(--teal-mid); }
+  .rcount { font-size: 10px; font-family: var(--mono); color: var(--text-3); min-width: 22px; text-align: right; }
+  .rcost  { font-size: 12px; font-weight: 600; color: var(--text-1); font-family: var(--mono); min-width: 54px; text-align: right; }
+
+  /* ── Activity log ─────────────────────────────────────────────────────── */
+  .log-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: .55rem 1rem;
+    border-bottom: .5px solid var(--border);
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-item:hover { background: var(--surface-2); }
+  .log-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .log-body { flex: 1; min-width: 0; }
+  .log-msg  { font-size: 12px; color: var(--text-1); line-height: 1.5; }
+  .log-time { font-size: 10px; color: var(--text-3); font-family: var(--mono); margin-top: 2px; }
+  .log-amt  { font-size: 11px; font-family: var(--mono); color: var(--teal-mid); white-space: nowrap; padding-top: 3px; flex-shrink: 0; }
+
+  /* ── Chart container ──────────────────────────────────────────────────── */
+  .chart-pad { padding: 1rem; }
+  .chart-wrap { position: relative; }
+
+  /* ── Responsive ───────────────────────────────────────────────────────── */
+  @media (max-width: 760px) {
+    body { padding: 1rem; }
+    .four-col { grid-template-columns: 1fr 1fr; }
+    .two-col  { grid-template-columns: 1fr; }
+    .three-col{ grid-template-columns: 1fr; }
+    .waste-head, .waste-row { grid-template-columns: 1fr 1fr 1fr; }
+    .waste-head span:nth-child(n+4),
+    .waste-row  > *:nth-child(n+4) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="d">
+
+  <!-- ── Top bar ─────────────────────────────────────────────────────────── -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M4 11.5C4 10 5 8.8 6.4 8.4M6.4 8.4C6.3 8 6.3 7.6 6.3 7.2C6.3 4.9 8.1 3 10.5 3C12.6 3 14.3 4.5 14.8 6.5C16.1 6.9 17 8.1 17 9.7C17 11.5 15.5 13 13.7 13H6.8C5.3 13 4 11.7 4 10.2" stroke="white" stroke-width="1.35" stroke-linecap="round"/>
+          <path d="M7.5 16L9.2 17.5L12.5 13.5" stroke="white" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">Cloud-Thrifty</div>
+        <div class="brand-sub">FinOps Agent · AWS · 3 regions active</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="pulse-wrap">
+        <div class="pulse"></div>
+        <span class="scan-label" id="scan-label">scanning us-east-1...</span>
+      </div>
+      <span class="chip chip-amber">dry run</span>
+    </div>
+  </div>
+
+  <!-- ── KPI row ─────────────────────────────────────────────────────────── -->
+  <div class="four-col">
+    <div class="kpi">
+      <div class="kpi-label">monthly waste</div>
+      <div class="kpi-value red">$93.78</div>
+      <div class="kpi-footer">
+        <span class="kpi-delta up">+$12.18</span>
+        <span class="kpi-delta-sub">vs last scan</span>
+      </div>
+      <svg class="kpi-spark" width="88" height="52" viewBox="0 0 88 52">
+        <polyline points="0,42 14,34 28,38 42,24 56,30 72,16 88,20" fill="none" stroke="#E24B4A" stroke-width="2.2"/>
+      </svg>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">saved this month</div>
+      <div class="kpi-value teal">$1,240</div>
+      <div class="kpi-footer">
+        <span class="kpi-delta down">34 resources</span>
+        <span class="kpi-delta-sub">cleaned up</span>
+      </div>
+      <svg class="kpi-spark" width="88" height="52" viewBox="0 0 88 52">
+        <polyline points="0,44 14,40 28,36 42,30 56,22 72,14 88,10" fill="none" stroke="#1D9E75" stroke-width="2.2"/>
+      </svg>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">scheduler savings</div>
+      <div class="kpi-value teal">$576</div>
+      <div class="kpi-footer">
+        <span class="kpi-delta-sub">per week · 15 instances scheduled</span>
+      </div>
+      <svg class="kpi-spark" width="88" height="52" viewBox="0 0 88 52">
+        <polyline points="0,38 14,34 28,34 42,30 56,30 72,26 88,26" fill="none" stroke="#1D9E75" stroke-width="2.2"/>
+      </svg>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">daily cost change</div>
+      <div class="kpi-value amber">+4.2%</div>
+      <div class="kpi-footer">
+        <span class="kpi-delta-sub">$1,240 today · within 20% threshold</span>
+      </div>
+      <svg class="kpi-spark" width="88" height="52" viewBox="0 0 88 52">
+        <polyline points="0,30 14,28 28,34 42,26 56,24 72,28 88,22" fill="none" stroke="#BA7517" stroke-width="2.2"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── Savings trend chart ──────────────────────────────────────────────── -->
+  <div class="panel panel-full">
+    <div class="panel-head">
+      <span class="panel-title">savings trend · 6 months</span>
+      <div class="legend">
+        <span class="leg-item"><span class="leg-sq" style="background:#1D9E75"></span>scheduler</span>
+        <span class="leg-item"><span class="leg-sq" style="background:#378ADD"></span>ebs volumes</span>
+        <span class="leg-item"><span class="leg-sq" style="background:#534AB7"></span>load balancers</span>
+        <span class="leg-item"><span class="leg-sq" style="background:#BA7517"></span>elastic ips</span>
+      </div>
+    </div>
+    <div class="chart-pad">
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="trend-chart" role="img"
+          aria-label="Stacked bar chart showing monthly savings from January to June across four categories: Scheduler, EBS volumes, Load Balancers, and Elastic IPs. June total is approximately $967.">
+          Monthly savings trend over 6 months totaling approximately $967 in June.
+        </canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Middle section ──────────────────────────────────────────────────── -->
+  <div class="two-col">
+
+    <!-- Waste table -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">zombie resources</span>
+        <span class="chip chip-red">7 found · $93.78/mo</span>
+      </div>
+      <div class="waste-head">
+        <span>resource</span>
+        <span>type</span>
+        <span>region</span>
+        <span>idle</span>
+        <span>cost/mo</span>
+        <span>severity</span>
+      </div>
+      <div id="waste-list"></div>
+    </div>
+
+    <!-- Right column: scheduler + region -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">smart scheduler</span>
+          <span class="chip chip-teal">~65% savings</span>
+        </div>
+        <div id="sched-list"></div>
+        <div class="sched-footer">stops 19:00 UTC · starts 08:00 UTC · Mon–Fri</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">waste by region</span>
+          <span class="chip chip-blue">3 regions</span>
+        </div>
+        <div id="region-list"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Activity log ─────────────────────────────────────────────────────── -->
+  <div class="panel panel-full" style="margin-top:12px">
+    <div class="panel-head">
+      <span class="panel-title">activity log</span>
+      <span class="chip chip-purple">live</span>
+    </div>
+    <div id="log-list"></div>
+  </div>
+
+</div><!-- /.d -->
+
+
+<script>
+/* ── Data ──────────────────────────────────────────────────────────────── */
+const waste = [
+  {id:'vol-0c1f7a88', type:'EBS Volume',   color:'#378ADD', region:'us-west-2', idle:9,  cost:40.80, sev:87},
+  {id:'vol-0a3f8c21', type:'EBS Volume',   color:'#378ADD', region:'us-east-1', idle:14, cost:25.50, sev:72},
+  {id:'vol-0b9d2e44', type:'EBS Volume',   color:'#378ADD', region:'us-east-1', idle:22, cost:10.20, sev:65},
+  {id:'alb-prod-old', type:'ALB',          color:'#534AB7', region:'us-east-1', idle:5,  cost:5.76,  sev:52},
+  {id:'nlb-legacy',   type:'NLB',          color:'#534AB7', region:'us-west-2', idle:3,  cost:4.32,  sev:38},
+  {id:'eipalloc-0d4f',type:'Elastic IP',   color:'#BA7517', region:'us-east-1', idle:-1, cost:3.60,  sev:30},
+  {id:'eipalloc-1a2b',type:'Elastic IP',   color:'#BA7517', region:'eu-west-1', idle:-1, cost:3.60,  sev:30},
+];
+
+const sched = [
+  {env:'dev',     count:8, stopped:true,  save:'$384/wk'},
+  {env:'staging', count:4, stopped:true,  save:'$192/wk'},
+  {env:'test',    count:3, stopped:false, save:'—'},
+];
+
+const regions = [
+  {name:'us-east-1', cost:45.06, items:4},
+  {name:'us-west-2', cost:45.12, items:2},
+  {name:'eu-west-1', cost:3.60,  items:1},
+];
+
+const logs = [
+  {color:'#1D9E75', msg:'Waste Hunter scan complete — 3 regions, 7 zombies identified',               time:'14 min ago', amt:'-$93.78/mo'},
+  {color:'#E24B4A', msg:'vol-0c1f7a88 unattached 9d in us-west-2 — Slack alert sent to #devops',     time:'14 min ago', amt:''},
+  {color:'#E24B4A', msg:'alb-prod-old zero traffic for 5d — queued for deletion in 24h',              time:'15 min ago', amt:''},
+  {color:'#1D9E75', msg:'Smart Scheduler: 8 dev + 4 staging instances stopped (19:00 UTC)',           time:'1 hr ago',   amt:'-$576/wk'},
+  {color:'#378ADD', msg:'Cost anomaly check: +4.2% vs yesterday — within 20% threshold',             time:'3 hr ago',   amt:'$1,240 today'},
+  {color:'#1D9E75', msg:'Smart Scheduler: 8 dev + 4 staging instances started (08:00 UTC)',           time:'7 hr ago',   amt:''},
+  {color:'#1D9E75', msg:'vol-0b9d2e44 deleted after 24h grace period — confirmed savings applied',   time:'1 day ago',  amt:'+$10.20 saved'},
+];
+
+/* ── Render: Waste table ───────────────────────────────────────────────── */
+const wl = document.getElementById('waste-list');
+waste.forEach(w => {
+  const sev       = w.sev;
+  const sevColor  = sev > 70 ? '#E24B4A' : sev > 45 ? '#BA7517' : '#888780';
+  const idleStr   = w.idle >= 0 ? w.idle + 'd' : '—';
+  wl.innerHTML += `
+  <div class="waste-row">
+    <span class="rid">${w.id}</span>
+    <span class="rtype">
+      <span class="rtype-dot" style="background:${w.color}"></span>
+      ${w.type}
+    </span>
+    <span style="font-size:11px;font-family:var(--mono);color:var(--text-2)">${w.region}</span>
+    <span style="font-size:11px;font-family:var(--mono);color:var(--text-2)">${idleStr}</span>
+    <span style="font-size:12px;font-weight:600;color:var(--text-1)">$${w.cost.toFixed(2)}</span>
+    <div class="sev-wrap">
+      <div class="sev-track"><div class="sev-fill" style="width:${sev}%;background:${sevColor}"></div></div>
+      <span class="sev-num" style="color:${sevColor}">${sev}</span>
+    </div>
+  </div>`;
+});
+
+/* ── Render: Scheduler ─────────────────────────────────────────────────── */
+const sl = document.getElementById('sched-list');
+sched.forEach(s => {
+  const dotColor  = s.stopped ? '#E24B4A' : '#1D9E75';
+  const barColor  = s.stopped ? '#E24B4A' : '#1D9E75';
+  const barWidth  = s.stopped ? 100 : 35;
+  sl.innerHTML += `
+  <div class="sched-item">
+    <div class="sched-dot" style="background:${dotColor}"></div>
+    <div class="sched-env">${s.env}</div>
+    <div class="sched-bar-wrap">
+      <div class="sched-meta-label">${s.count} instances · ${s.stopped ? 'stopped' : 'running'}</div>
+      <div class="sched-track">
+        <div class="sched-fill" style="width:${barWidth}%;background:${barColor}"></div>
+      </div>
+    </div>
+    <div class="sched-save">${s.save}</div>
+  </div>`;
+});
+
+/* ── Render: Regions ───────────────────────────────────────────────────── */
+const rl = document.getElementById('region-list');
+const maxCost = Math.max(...regions.map(r => r.cost));
+regions.forEach(r => {
+  const barW = Math.round((r.cost / maxCost) * 100);
+  rl.innerHTML += `
+  <div class="region-item">
+    <div class="rname">${r.name}</div>
+    <div class="rbar-wrap">
+      <div class="rbar"><div class="rbar-fill" style="width:${barW}%"></div></div>
+    </div>
+    <div class="rcount">${r.items}x</div>
+    <div class="rcost">$${r.cost.toFixed(2)}</div>
+  </div>`;
+});
+
+/* ── Render: Activity log ──────────────────────────────────────────────── */
+const ll = document.getElementById('log-list');
+logs.forEach(l => {
+  ll.innerHTML += `
+  <div class="log-item">
+    <div class="log-dot" style="background:${l.color}"></div>
+    <div class="log-body">
+      <div class="log-msg">${l.msg}</div>
+      <div class="log-time">${l.time}</div>
+    </div>
+    ${l.amt ? `<div class="log-amt">${l.amt}</div>` : ''}
+  </div>`;
+});
+
+/* ── Chart: Savings trend ──────────────────────────────────────────────── */
+new Chart(document.getElementById('trend-chart'), {
+  type: 'bar',
+  data: {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    datasets: [
+      {label:'Scheduler',     data:[380,380,380,480,480,576], backgroundColor:'#1D9E75', borderRadius:3, stack:'s'},
+      {label:'EBS Volumes',   data:[120,185,210,195,240,280], backgroundColor:'#378ADD', borderRadius:3, stack:'s'},
+      {label:'Load Balancers',data:[45, 60, 55, 70, 80, 75],  backgroundColor:'#534AB7', borderRadius:3, stack:'s'},
+      {label:'Elastic IPs',   data:[30, 30, 36, 30, 36, 36],  backgroundColor:'#BA7517', borderRadius:3, stack:'s'},
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: { label: ctx => '  ' + ctx.dataset.label + ': $' + ctx.raw }
+      }
+    },
+    scales: {
+      x: {
+        stacked: true,
+        grid: { display: false },
+        border: { display: false },
+        ticks: { font: { size: 11, family: 'IBM Plex Mono, monospace' }, color: '#888780', autoSkip: false }
+      },
+      y: {
+        stacked: true,
+        grid: { color: 'rgba(136,135,128,0.12)' },
+        border: { display: false },
+        ticks: {
+          font: { size: 11, family: 'IBM Plex Mono, monospace' },
+          color: '#888780',
+          callback: v => '$' + v
+        }
+      }
+    }
+  }
+});
+
+/* ── Animated scan label ───────────────────────────────────────────────── */
+const scanMsgs = [
+  'scanning us-east-1...',
+  'scanning us-west-2...',
+  'scanning eu-west-2...',
+  'last scan: 14 min ago',
+];
+let scanIdx = 0;
+const scanEl = document.getElementById('scan-label');
+setInterval(() => {
+  scanIdx = (scanIdx + 1) % scanMsgs.length;
+  scanEl.textContent = scanMsgs[scanIdx];
+}, 2200);
+</script>
+</body>
+</html>

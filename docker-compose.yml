@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  # The FinOps Agent: Runs your Python logic and Terraform
+  agent:
+    build: .
+    volumes:
+      - .:/app
+      # Since we configured the Dockerfile to use a non-root user with home /app,
+      # we mount credentials to /app/.aws instead of /root/.aws
+      - ~/.aws:/app/.aws:ro  
+    environment:
+      - DRY_RUN=false
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+    working_dir: /app
+    command: ["python", "src/waste_hunter.py"]
+
+  # The Dashboard: Serves your FinOps UI locally
+  dashboard:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      # Adjusted the path to point correctly to the dashboard folder
+      - ./dashboard/index.html.html:/usr/share/nginx/html/index.html:ro
