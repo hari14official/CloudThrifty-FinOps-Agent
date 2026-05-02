@@ -134,7 +134,10 @@ Then `terraform apply` again.
 | `dry_run` | `true` | **Start here.** Set false only when ready |
 
 ---
+<<<<<<< HEAD
 
+=======
+>>>>>>> a1441cc3bdd049d0a062114b76bb42e522212e42
 ## Opting Resources Out
 
 Tag any resource with `keep:true` and Cloud-Thrifty will skip it permanently:
@@ -203,3 +206,7 @@ Cloud-Thrifty itself is nearly free to operate:
 ## License
 
 MIT — free to use, modify, and deploy.
+<<<<<<< HEAD
+=======
+
+>>>>>>> a1441cc3bdd049d0a062114b76bb42e522212e42
