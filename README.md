@@ -1,33 +1,52 @@
-# 💸 CloudThrifty FinOps Agent
+# Cloud-Thrifty 💸 — Automated FinOps Agent for AWS
 
-> **Automated Cloud Waste Remediation & Cost Optimization Platform**  
-> *CloudThrifty is an intelligent, automated FinOps patrol agent designed to enforce cost discipline across AWS environments. By actively hunting cloud waste, managing resource lifecycles, and providing real-time visibility, CloudThrifty optimizes infrastructure footprints for Forex Agent environments and beyond.*
+![Cloud-Thrifty Banner](assets/header_option3.png)
 
-![License: MIT](https://img.shields.io/badge/license-MIT-green)
-![Terraform](https://img.shields.io/badge/terraform-1.5+-purple)
+> *"Cloud waste is a $30B+ annual problem. Cloud-Thrifty is an automated agent that identifies idle resources and enforces power-scheduling — reducing non-prod costs by ~60%."*
+
+[![Deploy](https://github.com/hari14official/cloud-thrifty/actions/workflows/deploy.yml/badge.svg)](https://github.com/your-org/cloud-thrifty/actions/workflows/deploy.yml)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
-![Docker](https://img.shields.io/badge/docker-ready-blue)
+![Terraform](https://img.shields.io/badge/terraform-1.5+-purple)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
+
+![Cloud-Thrifty Dashboard](assets/dashboard.png)
 
 ---
 
-## 🎯 Project Overview
+## What It Does
 
-This is a production-grade automated FinOps tool designed to patrol AWS environments, identify waste, and execute cost-saving actions across multiple regions (specifically tested and validated in `us-east-1` and `eu-west-2` London). Initially built to optimize a high-volume Forex Agent environment, it ensures lean, cost-effective cloud operations without compromising performance.
+Cloud-Thrifty is a production-grade FinOps agent built on AWS Lambda + Terraform. It runs three automated modules:
+
+| Module | Trigger | What it does |
+|---|---|---|
+| **Waste Hunter** | Every 6 hours | Scans for unattached EBS volumes, orphaned Elastic IPs, and idle load balancers |
+| **Smart Scheduler** | 7 PM / 8 AM Mon–Fri | Stops Dev/Staging EC2 + RDS at night, starts them in the morning |
+| **Real-Time Notifier** | On detection / Daily | Sends Slack/Discord alerts before deletion; triggers cost spike alerts |
+
+### Results (example month)
+| Item | Count | Savings |
+|---|---|---|
+| Orphaned EBS volumes deleted | 12 | $312/mo |
+| Elastic IPs released | 5 | $18/mo |
+| Dev instances power-scheduled | 8 | $576/mo |
+| **Total** | | **~$906/mo** |
 
 ---
 
-## 🚀 Key Technical Features
+## Architecture
 
-*   **Infrastructure as Code (IaC):** Built entirely with Terraform for scalable, modular, and repeatable deployment. Zero ClickOps required.
-*   **Multi-Region Waste Hunting:** A highly efficient Python-based AWS Lambda function that continuously scans for unattached EBS volumes, orphaned Elastic IPs, and idle resources across global infrastructure.
-*   **Smart Scheduler:** Automatically manages EC2 lifecycles. By enforcing strict uptime schedules, it reduces compute costs by up to **65%** on non-production (Dev/Staging) instances.
-*   **Real-Time Notifications:** Native integration with Discord Webhooks for instant alerts on waste detection and cost spikes. *Note: The alerting engine utilizes a custom `Mozilla` User-Agent header to successfully bypass Cloudflare security filters and ensure reliable message delivery.*
-*   **FinOps Dashboard:** A sleek, real-time frontend interface built with Chart.js (`index.html.html`) to visualize monthly waste reduction and savings trends.
-*   **Dockerized Environment:** Fully containerized architecture. Includes a comprehensive `Dockerfile` and `docker-compose.yml` for effortless local setup and testing without managing system dependencies.
-
----
-
-## 🏗️ Architecture
+```
+EventBridge (cron)
+      │
+      ├─► waste_hunter.py  ─── EC2 / ELB / CloudWatch APIs ──► S3 (reports)
+      │                                  │
+      ├─► smart_scheduler.py ── EC2 / RDS APIs               │
+      │                                  │                    │
+      └─► notifier.py ─────── Cost Explorer API              │
+                │                                            │
+                └── Slack / Discord Webhook ◄────────────────┘
+                                                 Dashboard reads S3
+```
 
 ```mermaid
 %% Architecture Diagram Placeholder
@@ -44,93 +63,78 @@ graph TD
 
 ---
 
-## 💻 Quick Start
+All infrastructure is managed with **Terraform** — zero ClickOps.
+
+---
+
+## Quick Start
 
 ### Prerequisites
-*   Docker & Docker Compose (for local development)
-*   Terraform ≥ 1.5
-*   AWS CLI configured with appropriate IAM permissions
-*   Discord Webhook URL
+- AWS CLI configured (`aws configure`)
+- Terraform ≥ 1.5
+- Python 3.12+
+- A Slack Incoming Webhook URL
 
-### 1. Local Environment Setup
-Spin up the development environment using Docker:
+### 1. Clone and configure
 ```bash
-docker-compose up -d
+git clone https://github.com/your-org/cloud-thrifty.git
+cd cloud-thrifty/terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your Slack webhook and account details
 ```
 
-### 2. Infrastructure Deployment
-Navigate to the Terraform directory and initialize the provider:
+### 2. Deploy (dry-run mode — nothing is deleted)
 ```bash
-cd terraform
 terraform init
-```
-
-Review the planned infrastructure changes:
-```bash
 terraform plan
-```
-
-Deploy the resources (runs in `dry_run` mode by default):
-```bash
 terraform apply
 ```
 
-### 3. Manual Lambda Invocation (Testing)
-You can manually trigger the Lambda functions to verify functionality:
+### 3. Test locally
 ```bash
-# Invoke the Waste Hunter
+cd ..
+pip install boto3 moto pytest
+pytest tests/ -v
+```
+
+### 4. Invoke manually
+```bash
+# Test the Waste Hunter in dry-run mode
 aws lambda invoke \
-  --function-name cloudthrifty-waste-hunter \
+  --function-name cloud-thrifty-waste-hunter \
   --payload '{}' \
   response.json && cat response.json
 
-# Invoke the Smart Scheduler
+# Force a stop cycle
 aws lambda invoke \
-  --function-name cloudthrifty-smart-scheduler \
+  --function-name cloud-thrifty-smart-scheduler \
   --payload '{"action": "stop"}' \
-  response.json && cat response.json
+  response.json
 ```
 
----
-
-## ⚙️ Configuration
-
-CloudThrifty is designed with a safety-first approach. By default, the system operates in **Dry Run Mode**, meaning it will only report on identified waste and will *not* delete any resources.
-
-### Dry Run vs. Active Mode
-
-Control the operational mode via Terraform variables:
-
+### 5. Go live
+Once you've reviewed a few Slack alerts and trust the findings, flip the flag:
 ```hcl
 # terraform.tfvars
-
-# Dry Run Mode (Default & Safe): Identifies waste, sends Discord alerts, but takes NO destructive action.
-dry_run = true
-
-# Active Mode: Identifies waste AND automatically terminates/stops idle resources to save costs.
 dry_run = false
 ```
-
-> **Warning:** Only set `dry_run = false` after carefully reviewing the Discord alerts and ensuring legitimate resources are properly tagged for exclusion.
-
----
-
-## 📊 Dashboard Preview
-
-The FinOps dashboard (`dashboard/index.html.html`) provides a sleek, real-time visualization of your cloud efficiency. Powered by Chart.js, it tracks:
-*   Cumulative monthly cost savings.
-*   Count of terminated orphaned resources (EBS, EIPs).
-*   EC2 uptime reduction metrics.
-
-*(Insert screenshot of the FinOps Dashboard here)*
-![Dashboard Placeholder](assets/dashboard.png)
+Then `terraform apply` again.
 
 ---
 
-<<<<<<< HEAD
-## 🛡️ License
-MIT License. See [LICENSE](LICENSE) for more information.
-=======
+## Configuration Reference
+
+| Variable | Default | Description |
+|---|---|---|
+| `target_regions` | `us-east-1,us-west-2` | Regions to scan |
+| `idle_ebs_days` | `7` | Days before an unattached volume is flagged |
+| `idle_lb_days` | `3` | Days of zero traffic before a LB is flagged |
+| `scheduler_environments` | `dev,staging,test` | Environment tag values to power-schedule |
+| `anomaly_threshold_pct` | `20` | % daily spend increase that triggers an alert |
+| `dry_run` | `true` | **Start here.** Set false only when ready |
+
+---
+
 ## Opting Resources Out
 
 Tag any resource with `keep:true` and Cloud-Thrifty will skip it permanently:
@@ -194,9 +198,8 @@ Cloud-Thrifty itself is nearly free to operate:
 - **Grafana dashboard**: point Grafana at the S3 JSON reports using the S3 datasource plugin
 
 ---
----
+
 
 ## License
 
 MIT — free to use, modify, and deploy.
->>>>>>> 2b98c67faaefa52d2ee05a37056ab8f8b4ad4f52
