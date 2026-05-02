@@ -183,11 +183,6 @@ Cloud-Thrifty itself is nearly free to operate:
 - **Grafana dashboard**: point Grafana at the S3 JSON reports using the S3 datasource plugin
 
 ---
-
-## Interview Talking Points
-
-> "I noticed cloud waste is a $30B+ annual problem, so I built an automated FinOps agent. It uses AWS Lambda on a CloudWatch Events schedule to scan for zombie resources — unattached EBS volumes, orphaned Elastic IPs, idle load balancers. A separate module implements tag-based power scheduling for dev environments, cutting their compute costs by over 60% by stopping them overnight and on weekends. Before deleting anything, it posts a Slack alert with a 24-hour grace period. Everything is deployed with Terraform and tested with moto. In a real account, it would save several hundred dollars per month."
-
 ---
 
 ## License
