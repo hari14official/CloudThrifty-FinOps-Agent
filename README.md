@@ -126,11 +126,6 @@ The FinOps dashboard (`dashboard/index.html.html`) provides a sleek, real-time v
 ![Dashboard Placeholder](assets/dashboard.png)
 
 ---
-
-<<<<<<< HEAD
-## 🛡️ License
-MIT License. See [LICENSE](LICENSE) for more information.
-=======
 ## Opting Resources Out
 
 Tag any resource with `keep:true` and Cloud-Thrifty will skip it permanently:
@@ -199,4 +194,4 @@ Cloud-Thrifty itself is nearly free to operate:
 ## License
 
 MIT — free to use, modify, and deploy.
->>>>>>> 2b98c67faaefa52d2ee05a37056ab8f8b4ad4f52
+
