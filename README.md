@@ -127,5 +127,76 @@ The FinOps dashboard (`dashboard/index.html.html`) provides a sleek, real-time v
 
 ---
 
+<<<<<<< HEAD
 ## 🛡️ License
 MIT License. See [LICENSE](LICENSE) for more information.
+=======
+## Opting Resources Out
+
+Tag any resource with `keep:true` and Cloud-Thrifty will skip it permanently:
+
+```bash
+# Keep a volume (e.g. it holds important snapshots)
+aws ec2 create-tags \
+  --resources vol-0abc1234 \
+  --tags Key=keep,Value=true
+
+# Opt an instance out of power-scheduling
+aws ec2 create-tags \
+  --resources i-0abc1234 \
+  --tags Key=scheduler:skip,Value=true
+```
+
+---
+
+## Project Structure
+
+```
+cloud-thrifty/
+├── src/
+│   ├── waste_hunter.py       # Module 1: zombie resource detection
+│   ├── smart_scheduler.py    # Module 2: tag-based auto stop/start
+│   └── notifier.py           # Module 3: Slack alerts + cost anomaly
+├── terraform/
+│   ├── main.tf               # Lambda, IAM, EventBridge, S3
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── terraform.tfvars.example
+├── tests/
+│   └── test_cloud_thrifty.py # moto-based unit tests (no real AWS needed)
+├── dashboard/
+│   └── index.html            # Live savings dashboard
+└── .github/
+    └── workflows/
+        └── deploy.yml        # CI: test → plan (PR) → apply (main)
+```
+
+---
+
+## Cost of Running Cloud-Thrifty
+
+Cloud-Thrifty itself is nearly free to operate:
+
+| Resource | Monthly cost |
+|---|---|
+| 3× Lambda functions (~120 invocations/month) | ~$0.00 (free tier) |
+| S3 report storage (~10 MB) | ~$0.00 |
+| CloudWatch Events rules | $0.00 |
+| **Total** | **< $1/month** |
+
+---
+
+## Extending Cloud-Thrifty
+
+- **Add RDS snapshot cleanup**: adapt `waste_hunter.py` to scan for snapshots older than N days
+- **Add S3 bucket analysis**: flag buckets with zero requests for 30+ days
+- **Multi-cloud**: the architecture ports cleanly to Azure Functions + Azure SDK
+- **Grafana dashboard**: point Grafana at the S3 JSON reports using the S3 datasource plugin
+
+---
+---
+
+## License
+
+MIT — free to use, modify, and deploy.
+>>>>>>> 2b98c67faaefa52d2ee05a37056ab8f8b4ad4f52
