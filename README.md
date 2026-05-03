@@ -1,7 +1,5 @@
 # Cloud-Thrifty 💸 — Automated FinOps Agent for AWS
 
-![Cloud-Thrifty Banner](assets/header_option3.png)
-
 > *"Cloud waste is a $30B+ annual problem. Cloud-Thrifty is an automated agent that identifies idle resources and enforces power-scheduling — reducing non-prod costs by ~60%."*
 
 [![Deploy](https://github.com/hari14official/cloud-thrifty/actions/workflows/deploy.yml/badge.svg)](https://github.com/your-org/cloud-thrifty/actions/workflows/deploy.yml)
