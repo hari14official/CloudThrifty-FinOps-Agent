@@ -169,20 +169,6 @@ cloud-thrifty/
         └── deploy.yml        # CI: test → plan (PR) → apply (main)
 ```
 
----
-
-## Cost of Running Cloud-Thrifty
-
-Cloud-Thrifty itself is nearly free to operate:
-
-| Resource | Monthly cost |
-|---|---|
-| 3× Lambda functions (~120 invocations/month) | ~$0.00 (free tier) |
-| S3 report storage (~10 MB) | ~$0.00 |
-| CloudWatch Events rules | $0.00 |
-| **Total** | **< $1/month** |
-
----
 
 ## Extending Cloud-Thrifty
 
